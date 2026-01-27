@@ -1,0 +1,19 @@
+# FastAPI 框架和服务器
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+
+# 数据处理
+pandas==3.0.0
+numpy==2.4.1
+
+# 股票数据获取
+akshare==1.18.19
+
+# 数据验证
+pydantic==2.10.3
+
+# HTTP 客户端（akshare 依赖）
+requests==2.32.5
+
+# 日期处理
+python-dateutil==2.9.0.post0

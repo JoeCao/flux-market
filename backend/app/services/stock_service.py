@@ -1,0 +1,168 @@
+"""
+股票数据服务
+封装 akshare 调用，处理数据格式化和均线计算
+"""
+import akshare as ak
+import pandas as pd
+from datetime import datetime, timedelta
+from typing import Optional, Dict, List
+
+
+class StockService:
+    """股票数据服务类"""
+
+    @staticmethod
+    def calculate_ma(data: pd.Series, period: int) -> List[Optional[float]]:
+        """
+        计算移动平均线
+
+        Args:
+            data: 收盘价序列
+            period: 周期
+
+        Returns:
+            移动平均线数据列表
+        """
+        ma = data.rolling(window=period).mean()
+        return [None if pd.isna(x) else round(float(x), 2) for x in ma]
+
+    @staticmethod
+    def get_stock_kline(
+        symbol: str,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        adjust: str = "qfq"
+    ) -> Dict:
+        """
+        获取股票K线数据（支持美股和A股）
+
+        Args:
+            symbol: 股票代码
+                - 美股: AAPL, TSLA 等
+                - A股: 000001, 600000 等（6位数字）
+            start_date: 开始日期，格式 YYYY-MM-DD
+            end_date: 结束日期，格式 YYYY-MM-DD
+            adjust: 复权类型，qfq/hfq/空字符串
+
+        Returns:
+            包含K线数据和均线的字典
+        """
+        try:
+            # 判断是A股还是美股
+            is_a_stock = symbol.isdigit() and len(symbol) == 6
+
+            if is_a_stock:
+                # A股数据
+                df = StockService._get_a_stock_data(symbol, adjust)
+            else:
+                # 美股数据
+                df = ak.stock_us_daily(symbol=symbol, adjust=adjust)
+
+            if df.empty:
+                raise ValueError(f"未找到股票 {symbol} 的数据")
+
+            # 设置日期索引
+            df = df.set_index("date")
+            df.index = pd.to_datetime(df.index)
+
+            # 处理日期范围
+            if start_date is None:
+                # 默认最近30天
+                start_date = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
+            if end_date is None:
+                end_date = datetime.now().strftime("%Y-%m-%d")
+
+            # 筛选日期范围
+            df = df[start_date:end_date]
+
+            if df.empty:
+                raise ValueError(f"指定日期范围内没有数据")
+
+            # 计算均线
+            ma5 = StockService.calculate_ma(df['close'], 5)
+            ma10 = StockService.calculate_ma(df['close'], 10)
+            ma20 = StockService.calculate_ma(df['close'], 20)
+
+            # 格式化数据
+            dates = [d.strftime("%Y-%m-%d") for d in df.index]
+
+            # K线数据格式：[open, close, low, high] (ECharts candlestick 格式)
+            kline_data = [
+                [
+                    round(float(row['open']), 2),
+                    round(float(row['close']), 2),
+                    round(float(row['low']), 2),
+                    round(float(row['high']), 2)
+                ]
+                for _, row in df.iterrows()
+            ]
+
+            # 成交量数据
+            volumes = [round(float(v), 0) for v in df['volume']]
+
+            return {
+                "symbol": symbol,
+                "dates": dates,
+                "kline": kline_data,
+                "volumes": volumes,
+                "ma5": ma5,
+                "ma10": ma10,
+                "ma20": ma20,
+                "count": len(dates)
+            }
+
+        except Exception as e:
+            raise Exception(f"获取股票数据失败: {str(e)}")
+
+    @staticmethod
+    def _get_a_stock_data(symbol: str, adjust: str = "qfq") -> pd.DataFrame:
+        """
+        获取A股数据（带重试机制）
+
+        Args:
+            symbol: 6位股票代码
+            adjust: 复权类型
+
+        Returns:
+            包含K线数据的DataFrame
+        """
+        import time
+
+        max_retries = 3
+        retry_delay = 2
+
+        for attempt in range(max_retries):
+            try:
+                # 根据复权类型调用不同接口
+                if adjust == "qfq":
+                    # 前复权
+                    df = ak.stock_zh_a_hist(symbol=symbol, adjust="qfq")
+                elif adjust == "hfq":
+                    # 后复权
+                    df = ak.stock_zh_a_hist(symbol=symbol, adjust="hfq")
+                else:
+                    # 不复权
+                    df = ak.stock_zh_a_hist(symbol=symbol, adjust="")
+
+                # 重命名列以匹配统一格式
+                df = df.rename(columns={
+                    '日期': 'date',
+                    '开盘': 'open',
+                    '收盘': 'close',
+                    '最高': 'high',
+                    '最低': 'low',
+                    '成交量': 'volume'
+                })
+
+                # 只保留需要的列
+                df = df[['date', 'open', 'close', 'high', 'low', 'volume']]
+
+                return df
+
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    print(f"获取A股数据失败，{retry_delay}秒后重试... (尝试 {attempt + 1}/{max_retries})")
+                    time.sleep(retry_delay)
+                    continue
+                else:
+                    raise Exception(f"获取A股数据失败（已重试{max_retries}次）: {str(e)}")
