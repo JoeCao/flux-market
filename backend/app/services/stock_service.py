@@ -118,6 +118,7 @@ class StockService:
     def _get_a_stock_data(symbol: str, adjust: str = "qfq") -> pd.DataFrame:
         """
         获取A股数据（带重试机制）
+        使用新浪数据源 stock_zh_a_daily，比东方财富数据源更稳定
 
         Args:
             symbol: 6位股票代码
@@ -131,30 +132,18 @@ class StockService:
         max_retries = 3
         retry_delay = 2
 
+        # 转换股票代码格式：600000 -> sh600000, 000001 -> sz000001
+        if symbol.startswith('6'):
+            full_symbol = f"sh{symbol}"
+        else:
+            full_symbol = f"sz{symbol}"
+
         for attempt in range(max_retries):
             try:
-                # 根据复权类型调用不同接口
-                if adjust == "qfq":
-                    # 前复权
-                    df = ak.stock_zh_a_hist(symbol=symbol, adjust="qfq")
-                elif adjust == "hfq":
-                    # 后复权
-                    df = ak.stock_zh_a_hist(symbol=symbol, adjust="hfq")
-                else:
-                    # 不复权
-                    df = ak.stock_zh_a_hist(symbol=symbol, adjust="")
+                # 使用新浪数据源 stock_zh_a_daily（更稳定）
+                df = ak.stock_zh_a_daily(symbol=full_symbol, adjust=adjust)
 
-                # 重命名列以匹配统一格式
-                df = df.rename(columns={
-                    '日期': 'date',
-                    '开盘': 'open',
-                    '收盘': 'close',
-                    '最高': 'high',
-                    '最低': 'low',
-                    '成交量': 'volume'
-                })
-
-                # 只保留需要的列
+                # 只保留需要的列（新浪数据源列名已经是英文）
                 df = df[['date', 'open', 'close', 'high', 'low', 'volume']]
 
                 return df
