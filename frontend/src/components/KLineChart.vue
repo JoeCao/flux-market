@@ -99,14 +99,14 @@ const initChart = () => {
         left: '3%',
         right: '3%',
         top: '12%',
-        height: '55%',
+        height: '48%',
         borderColor: '#1a1f2e'
       },
       {
         left: '3%',
         right: '3%',
-        top: '72%',
-        height: '18%',
+        top: '75%',
+        height: '15%',
         borderColor: '#1a1f2e'
       }
     ],
