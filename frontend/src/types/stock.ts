@@ -38,3 +38,11 @@ export interface StockQueryParams {
   end_date?: string
   adjust?: 'qfq' | 'hfq' | ''
 }
+
+// 股票信息
+export interface StockInfo {
+  code: string
+  name: string
+  market: string
+  status: string
+}

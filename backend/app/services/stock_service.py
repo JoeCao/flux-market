@@ -4,12 +4,72 @@
 """
 import akshare as ak
 import pandas as pd
+import sqlite3
+import os
 from datetime import datetime, timedelta
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Tuple
 
 
 class StockService:
     """股票数据服务类"""
+
+    # 数据库路径
+    DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'stocks.db')
+
+    @staticmethod
+    def validate_stock_code(symbol: str) -> Tuple[bool, Optional[str], Optional[str]]:
+        """
+        验证股票代码是否有效
+
+        Args:
+            symbol: 6位股票代码
+
+        Returns:
+            (是否有效, 股票名称, 状态)
+        """
+        try:
+            conn = sqlite3.connect(StockService.DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute('SELECT name, status FROM stocks WHERE code = ?', (symbol,))
+            result = cursor.fetchone()
+            conn.close()
+
+            if result:
+                return True, result[0], result[1]
+            return False, None, None
+        except Exception:
+            # 数据库不存在或查询失败，跳过验证
+            return True, None, None
+
+    @staticmethod
+    def search_stocks(keyword: str, limit: int = 20) -> List[Dict]:
+        """
+        搜索股票
+
+        Args:
+            keyword: 搜索关键词（代码或名称）
+            limit: 返回数量限制
+
+        Returns:
+            匹配的股票列表
+        """
+        try:
+            conn = sqlite3.connect(StockService.DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT code, name, market, status FROM stocks
+                WHERE code LIKE ? OR name LIKE ?
+                LIMIT ?
+            ''', (f'%{keyword}%', f'%{keyword}%', limit))
+            results = cursor.fetchall()
+            conn.close()
+
+            return [
+                {'code': r[0], 'name': r[1], 'market': r[2], 'status': r[3]}
+                for r in results
+            ]
+        except Exception:
+            return []
 
     @staticmethod
     def calculate_ma(data: pd.Series, period: int) -> List[Optional[float]]:
@@ -52,6 +112,11 @@ class StockService:
             is_a_stock = symbol.isdigit() and len(symbol) == 6
 
             if is_a_stock:
+                # 验证股票代码
+                valid, name, status = StockService.validate_stock_code(symbol)
+                if not valid:
+                    raise ValueError(f"股票代码 {symbol} 不存在，请检查代码是否正确")
+
                 # A股数据
                 df = StockService._get_a_stock_data(symbol, adjust)
             else:
@@ -67,8 +132,8 @@ class StockService:
 
             # 处理日期范围
             if start_date is None:
-                # 默认最近30天
-                start_date = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
+                # 默认最近90天，确保MA20有足够数据
+                start_date = (datetime.now() - timedelta(days=90)).strftime("%Y-%m-%d")
             if end_date is None:
                 end_date = datetime.now().strftime("%Y-%m-%d")
 

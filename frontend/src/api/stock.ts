@@ -2,7 +2,7 @@
  * 股票数据 API 调用模块
  */
 import axios from 'axios'
-import type { ApiResponse, KLineData, StockQueryParams } from '../types/stock'
+import type { ApiResponse, KLineData, StockQueryParams, StockInfo } from '../types/stock'
 
 // 创建 axios 实例
 const apiClient = axios.create({
@@ -36,7 +36,15 @@ export const getStockInfo = async (symbol: string): Promise<ApiResponse> => {
   return apiClient.get(`/stock/info/${symbol}`)
 }
 
+/**
+ * 搜索股票
+ */
+export const searchStocks = async (keyword: string, limit: number = 20): Promise<ApiResponse<StockInfo[]>> => {
+  return apiClient.get('/stock/search', { params: { keyword, limit } })
+}
+
 export default {
   getStockKLine,
-  getStockInfo
+  getStockInfo,
+  searchStocks
 }

@@ -49,6 +49,14 @@ if [ ! -d "frontend/node_modules" ]; then
     cd frontend && npm install && cd ..
 fi
 
+# 检查股票数据库
+if [ ! -f "backend/stocks.db" ]; then
+    echo -e "${YELLOW}股票数据库不存在，正在初始化...${NC}"
+    source venv/bin/activate
+    python backend/init_db.py
+    echo ""
+fi
+
 # 启动后端
 echo -e "${GREEN}[1/2] 启动后端服务 (FastAPI)...${NC}"
 source venv/bin/activate

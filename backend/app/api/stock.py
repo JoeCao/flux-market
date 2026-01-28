@@ -60,3 +60,42 @@ async def get_stock_info(symbol: str):
             "note": "此接口为预留接口，后续可扩展更多信息"
         }
     }
+
+
+@router.get("/search")
+async def search_stocks(
+    keyword: str = Query(..., description="搜索关键词（股票代码或名称）"),
+    limit: int = Query(20, description="返回数量限制")
+):
+    """
+    搜索股票
+
+    - **keyword**: 搜索关键词，支持股票代码或名称模糊匹配
+    - **limit**: 返回数量限制，默认20条
+    """
+    results = StockService.search_stocks(keyword, limit)
+    return {
+        "code": 0,
+        "message": "success",
+        "data": results
+    }
+
+
+@router.get("/validate/{symbol}")
+async def validate_stock(symbol: str):
+    """
+    验证股票代码是否有效
+
+    - **symbol**: 股票代码
+    """
+    valid, name, status = StockService.validate_stock_code(symbol)
+    return {
+        "code": 0,
+        "message": "success",
+        "data": {
+            "valid": valid,
+            "code": symbol,
+            "name": name,
+            "status": status
+        }
+    }

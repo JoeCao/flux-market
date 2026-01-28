@@ -2,14 +2,39 @@
   <div class="stock-selector">
     <div class="selector-form">
       <div class="form-row">
-        <div class="form-item">
+        <div class="form-item stock-search-item">
           <label>股票代码:</label>
-          <input
-            v-model="formData.symbol"
-            type="text"
-            placeholder="如: AAPL, 000001, 600000"
-            @keyup.enter="handleQuery"
-          />
+          <div class="stock-search-wrapper" ref="searchWrapper">
+            <input
+              v-model="searchKeyword"
+              type="text"
+              placeholder="输入代码或名称搜索"
+              @input="handleSearch"
+              @focus="showDropdown = true"
+              @keyup.enter="handleQuery"
+              class="stock-search-input"
+            />
+            <div v-if="showDropdown && (searchResults.length > 0 || searchKeyword)" class="stock-dropdown">
+              <div v-if="searching" class="dropdown-loading">搜索中...</div>
+              <template v-else>
+                <div
+                  v-for="stock in searchResults"
+                  :key="stock.code"
+                  class="dropdown-item"
+                  :class="{ 'is-st': stock.status === 'ST' }"
+                  @click="selectStock(stock)"
+                >
+                  <span class="stock-code">{{ stock.code }}</span>
+                  <span class="stock-name">{{ stock.name }}</span>
+                  <span class="stock-market">{{ stock.market }}</span>
+                  <span v-if="stock.status === 'ST'" class="stock-status">ST</span>
+                </div>
+                <div v-if="searchResults.length === 0 && searchKeyword && !searching" class="dropdown-empty">
+                  未找到匹配的股票
+                </div>
+              </template>
+            </div>
+          </div>
         </div>
 
         <div class="form-item">
@@ -56,8 +81,9 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
-import type { StockQueryParams } from '../types/stock'
+import { reactive, ref, onMounted, onUnmounted } from 'vue'
+import type { StockQueryParams, StockInfo } from '../types/stock'
+import { searchStocks } from '../api/stock'
 
 // Emits
 const emit = defineEmits<{
@@ -72,15 +98,85 @@ defineProps<{
 
 // 表单数据
 const formData = reactive<StockQueryParams>({
-  symbol: 'AAPL',
+  symbol: '',
   start_date: '',
   end_date: '',
   adjust: 'qfq'
 })
 
+// 搜索相关
+const searchKeyword = ref('')
+const searchResults = ref<StockInfo[]>([])
+const showDropdown = ref(false)
+const searching = ref(false)
+const searchWrapper = ref<HTMLElement | null>(null)
+let searchTimer: number | null = null
+
+// 搜索处理（防抖）
+const handleSearch = () => {
+  if (searchTimer) {
+    clearTimeout(searchTimer)
+  }
+
+  searchTimer = window.setTimeout(async () => {
+    const keyword = searchKeyword.value.trim()
+    if (!keyword) {
+      searchResults.value = []
+      return
+    }
+
+    searching.value = true
+    try {
+      const response = await searchStocks(keyword, 15)
+      if (response.code === 0 && response.data) {
+        searchResults.value = response.data
+      }
+    } catch (err) {
+      console.error('Search error:', err)
+      searchResults.value = []
+    } finally {
+      searching.value = false
+    }
+  }, 300)
+}
+
+// 选择股票
+const selectStock = (stock: StockInfo) => {
+  formData.symbol = stock.code
+  searchKeyword.value = `${stock.code} ${stock.name}`
+  showDropdown.value = false
+}
+
+// 点击外部关闭下拉框
+const handleClickOutside = (event: MouseEvent) => {
+  if (searchWrapper.value && !searchWrapper.value.contains(event.target as Node)) {
+    showDropdown.value = false
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
+  if (searchTimer) {
+    clearTimeout(searchTimer)
+  }
+})
+
 // 查询处理
 const handleQuery = () => {
+  // 如果输入的是纯数字或字母，直接使用
+  const keyword = searchKeyword.value.trim()
+  if (!formData.symbol && keyword) {
+    // 提取代码部分（空格前的内容）
+    formData.symbol = keyword.split(' ')[0]
+  }
+
   if (!formData.symbol) return
+
+  showDropdown.value = false
 
   emit('query', {
     symbol: formData.symbol.toUpperCase(),
@@ -142,6 +238,96 @@ const handleQuery = () => {
 
 .form-item input::placeholder {
   color: #4b5563;
+}
+
+/* 股票搜索样式 */
+.stock-search-item {
+  position: relative;
+}
+
+.stock-search-wrapper {
+  position: relative;
+}
+
+.stock-search-input {
+  width: 220px !important;
+}
+
+.stock-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  width: 320px;
+  max-height: 300px;
+  overflow-y: auto;
+  background: #0f1419;
+  border: 1px solid #1a1f2e;
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+  border-bottom: 1px solid #1a1f2e;
+}
+
+.dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.dropdown-item:hover {
+  background: #1a1f2e;
+}
+
+.dropdown-item.is-st {
+  opacity: 0.7;
+}
+
+.stock-code {
+  font-family: 'Courier New', monospace;
+  color: #00ff88;
+  font-weight: 600;
+  min-width: 60px;
+}
+
+.stock-name {
+  color: #e5e7eb;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stock-market {
+  color: #6b7280;
+  font-size: 11px;
+  padding: 2px 6px;
+  background: #1a1f2e;
+  border-radius: 3px;
+}
+
+.stock-status {
+  color: #ef4444;
+  font-size: 10px;
+  padding: 2px 4px;
+  background: rgba(239, 68, 68, 0.2);
+  border-radius: 3px;
+}
+
+.dropdown-loading,
+.dropdown-empty {
+  padding: 15px;
+  text-align: center;
+  color: #6b7280;
+  font-size: 13px;
 }
 
 .query-btn {
