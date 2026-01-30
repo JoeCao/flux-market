@@ -21,6 +21,10 @@ export interface KLineData {
   ma5: (number | null)[]
   ma10: (number | null)[]
   ma20: (number | null)[]
+  macd: { dif: (number | null)[], dea: (number | null)[], macd: (number | null)[] }
+  kdj: { k: (number | null)[], d: (number | null)[], j: (number | null)[] }
+  rsi: (number | null)[]
+  boll: { mid: (number | null)[], upper: (number | null)[], lower: (number | null)[] }
   count: number
 }
 

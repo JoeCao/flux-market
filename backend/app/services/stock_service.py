@@ -87,6 +87,97 @@ class StockService:
         return [None if pd.isna(x) else round(float(x), 2) for x in ma]
 
     @staticmethod
+    def calculate_macd(close: pd.Series, fast: int = 12, slow: int = 26, signal: int = 9) -> Tuple[List, List, List]:
+        """
+        计算MACD指标
+
+        Args:
+            close: 收盘价序列
+            fast: 快线周期
+            slow: 慢线周期
+            signal: 信号线周期
+
+        Returns:
+            (DIF, DEA, MACD柱)
+        """
+        ema_fast = close.ewm(span=fast, adjust=False).mean()
+        ema_slow = close.ewm(span=slow, adjust=False).mean()
+        dif = ema_fast - ema_slow
+        dea = dif.ewm(span=signal, adjust=False).mean()
+        macd = (dif - dea) * 2
+
+        to_list = lambda s: [None if pd.isna(x) else round(float(x), 4) for x in s]
+        return to_list(dif), to_list(dea), to_list(macd)
+
+    @staticmethod
+    def calculate_kdj(high: pd.Series, low: pd.Series, close: pd.Series, n: int = 9, m1: int = 3, m2: int = 3) -> Tuple[List, List, List]:
+        """
+        计算KDJ指标
+
+        Args:
+            high: 最高价序列
+            low: 最低价序列
+            close: 收盘价序列
+            n: RSV周期
+            m1: K值平滑周期
+            m2: D值平滑周期
+
+        Returns:
+            (K, D, J)
+        """
+        lowest_low = low.rolling(window=n).min()
+        highest_high = high.rolling(window=n).max()
+        rsv = (close - lowest_low) / (highest_high - lowest_low) * 100
+        rsv = rsv.fillna(50)
+
+        k = rsv.ewm(com=m1 - 1, adjust=False).mean()
+        d = k.ewm(com=m2 - 1, adjust=False).mean()
+        j = 3 * k - 2 * d
+
+        to_list = lambda s: [None if pd.isna(x) else round(float(x), 2) for x in s]
+        return to_list(k), to_list(d), to_list(j)
+
+    @staticmethod
+    def calculate_rsi(close: pd.Series, period: int = 14) -> List[Optional[float]]:
+        """
+        计算RSI指标
+
+        Args:
+            close: 收盘价序列
+            period: 周期
+
+        Returns:
+            RSI值列表
+        """
+        delta = close.diff()
+        gain = delta.where(delta > 0, 0).rolling(window=period).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+        rs = gain / loss
+        rsi = 100 - (100 / (1 + rs))
+        return [None if pd.isna(x) else round(float(x), 2) for x in rsi]
+
+    @staticmethod
+    def calculate_boll(close: pd.Series, period: int = 20, std_dev: int = 2) -> Tuple[List, List, List]:
+        """
+        计算布林带指标
+
+        Args:
+            close: 收盘价序列
+            period: 周期
+            std_dev: 标准差倍数
+
+        Returns:
+            (中轨, 上轨, 下轨)
+        """
+        mid = close.rolling(window=period).mean()
+        std = close.rolling(window=period).std()
+        upper = mid + std_dev * std
+        lower = mid - std_dev * std
+
+        to_list = lambda s: [None if pd.isna(x) else round(float(x), 2) for x in s]
+        return to_list(mid), to_list(upper), to_list(lower)
+
+    @staticmethod
     def get_stock_kline(
         symbol: str,
         start_date: Optional[str] = None,
@@ -148,6 +239,12 @@ class StockService:
             ma10 = StockService.calculate_ma(df['close'], 10)
             ma20 = StockService.calculate_ma(df['close'], 20)
 
+            # 计算技术指标
+            macd_dif, macd_dea, macd_hist = StockService.calculate_macd(df['close'])
+            kdj_k, kdj_d, kdj_j = StockService.calculate_kdj(df['high'], df['low'], df['close'])
+            rsi = StockService.calculate_rsi(df['close'])
+            boll_mid, boll_upper, boll_lower = StockService.calculate_boll(df['close'])
+
             # 格式化数据
             dates = [d.strftime("%Y-%m-%d") for d in df.index]
 
@@ -173,6 +270,10 @@ class StockService:
                 "ma5": ma5,
                 "ma10": ma10,
                 "ma20": ma20,
+                "macd": {"dif": macd_dif, "dea": macd_dea, "macd": macd_hist},
+                "kdj": {"k": kdj_k, "d": kdj_d, "j": kdj_j},
+                "rsi": rsi,
+                "boll": {"mid": boll_mid, "upper": boll_upper, "lower": boll_lower},
                 "count": len(dates)
             }
 

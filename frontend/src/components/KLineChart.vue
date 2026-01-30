@@ -11,6 +11,7 @@ import type { KLineData } from '../types/stock'
 const props = defineProps<{
   data: KLineData | null
   height?: string
+  indicator?: 'macd' | 'kdj' | 'rsi'
 }>()
 
 // Refs
@@ -71,12 +72,32 @@ const initChart = () => {
             result += `<div style="margin: 4px 0;">
               <span style="color: #6b7280;">成交量:</span> <span style="color: #00bfff;">${item.data.toLocaleString()}</span>
             </div>`
-          } else {
-            const color = item.seriesName === 'MA5' ? '#ff6b6b' :
-                         item.seriesName === 'MA10' ? '#4ecdc4' : '#ffe66d'
-            result += `<div style="margin: 2px 0;">
-              <span style="color: ${color};">${item.seriesName}:</span> <span style="color: #e5e7eb;">${item.data !== null ? item.data : '-'}</span>
-            </div>`
+          } else if (item.seriesName === 'MA5') {
+            result += `<div style="margin: 2px 0;"><span style="color: #ff6b6b;">MA5:</span> <span style="color: #e5e7eb;">${item.data !== null ? item.data : '-'}</span></div>`
+          } else if (item.seriesName === 'MA10') {
+            result += `<div style="margin: 2px 0;"><span style="color: #4ecdc4;">MA10:</span> <span style="color: #e5e7eb;">${item.data !== null ? item.data : '-'}</span></div>`
+          } else if (item.seriesName === 'MA20') {
+            result += `<div style="margin: 2px 0;"><span style="color: #ffe66d;">MA20:</span> <span style="color: #e5e7eb;">${item.data !== null ? item.data : '-'}</span></div>`
+          } else if (item.seriesName === 'BOLL上轨') {
+            result += `<div style="margin: 2px 0;"><span style="color: #f472b6;">BOLL上:</span> <span style="color: #e5e7eb;">${item.data !== null ? item.data : '-'}</span></div>`
+          } else if (item.seriesName === 'BOLL中轨') {
+            result += `<div style="margin: 2px 0;"><span style="color: #a78bfa;">BOLL中:</span> <span style="color: #e5e7eb;">${item.data !== null ? item.data : '-'}</span></div>`
+          } else if (item.seriesName === 'BOLL下轨') {
+            result += `<div style="margin: 2px 0;"><span style="color: #60a5fa;">BOLL下:</span> <span style="color: #e5e7eb;">${item.data !== null ? item.data : '-'}</span></div>`
+          } else if (item.seriesName === 'DIF') {
+            result += `<div style="margin: 2px 0;"><span style="color: #fbbf24;">DIF:</span> <span style="color: #e5e7eb;">${item.data !== null ? item.data : '-'}</span></div>`
+          } else if (item.seriesName === 'DEA') {
+            result += `<div style="margin: 2px 0;"><span style="color: #34d399;">DEA:</span> <span style="color: #e5e7eb;">${item.data !== null ? item.data : '-'}</span></div>`
+          } else if (item.seriesName === 'MACD') {
+            result += `<div style="margin: 2px 0;"><span style="color: #f87171;">MACD:</span> <span style="color: #e5e7eb;">${item.data !== null ? item.data : '-'}</span></div>`
+          } else if (item.seriesName === 'K') {
+            result += `<div style="margin: 2px 0;"><span style="color: #fbbf24;">K:</span> <span style="color: #e5e7eb;">${item.data !== null ? item.data : '-'}</span></div>`
+          } else if (item.seriesName === 'D') {
+            result += `<div style="margin: 2px 0;"><span style="color: #34d399;">D:</span> <span style="color: #e5e7eb;">${item.data !== null ? item.data : '-'}</span></div>`
+          } else if (item.seriesName === 'J') {
+            result += `<div style="margin: 2px 0;"><span style="color: #f472b6;">J:</span> <span style="color: #e5e7eb;">${item.data !== null ? item.data : '-'}</span></div>`
+          } else if (item.seriesName === 'RSI') {
+            result += `<div style="margin: 2px 0;"><span style="color: #a78bfa;">RSI:</span> <span style="color: #e5e7eb;">${item.data !== null ? item.data : '-'}</span></div>`
           }
         })
         result += `</div>`
@@ -84,7 +105,7 @@ const initChart = () => {
       }
     },
     legend: {
-      data: ['K线', 'MA5', 'MA10', 'MA20', '成交量'],
+      data: ['K线', 'MA5', 'MA10', 'MA20', 'BOLL上轨', 'BOLL中轨', 'BOLL下轨', '成交量'],
       top: 10,
       right: 20,
       textStyle: {
@@ -99,14 +120,21 @@ const initChart = () => {
         left: '3%',
         right: '3%',
         top: '12%',
-        height: '48%',
+        height: '40%',
         borderColor: '#1a1f2e'
       },
       {
         left: '3%',
         right: '3%',
-        top: '75%',
-        height: '15%',
+        top: '55%',
+        height: '12%',
+        borderColor: '#1a1f2e'
+      },
+      {
+        left: '3%',
+        right: '3%',
+        top: '70%',
+        height: '18%',
         borderColor: '#1a1f2e'
       }
     ],
@@ -115,35 +143,29 @@ const initChart = () => {
         type: 'category',
         data: [],
         gridIndex: 0,
-        axisLine: {
-          lineStyle: {
-            color: '#1a1f2e'
-          }
-        },
-        axisLabel: {
-          color: '#6b7280',
-          fontSize: 11,
-          rotate: 30
-        },
-        splitLine: {
-          show: false
-        }
+        axisLine: { lineStyle: { color: '#1a1f2e' } },
+        axisLabel: { show: false },
+        splitLine: { show: false }
       },
       {
         type: 'category',
         data: [],
         gridIndex: 1,
-        axisLine: {
-          lineStyle: {
-            color: '#1a1f2e'
-          }
-        },
+        axisLine: { lineStyle: { color: '#1a1f2e' } },
+        axisLabel: { show: false },
+        splitLine: { show: false }
+      },
+      {
+        type: 'category',
+        data: [],
+        gridIndex: 2,
+        axisLine: { lineStyle: { color: '#1a1f2e' } },
         axisLabel: {
-          show: false
+          color: '#6b7280',
+          fontSize: 11,
+          rotate: 30
         },
-        splitLine: {
-          show: false
-        }
+        splitLine: { show: false }
       }
     ],
     yAxis: [
@@ -151,52 +173,40 @@ const initChart = () => {
         scale: true,
         gridIndex: 0,
         splitNumber: 4,
-        axisLine: {
-          show: false
-        },
-        axisTick: {
-          show: false
-        },
-        axisLabel: {
-          color: '#6b7280',
-          fontSize: 11
-        },
-        splitLine: {
-          lineStyle: {
-            color: '#1a1f2e',
-            type: 'dashed'
-          }
-        }
+        axisLine: { show: false },
+        axisTick: { show: false },
+        axisLabel: { color: '#6b7280', fontSize: 11 },
+        splitLine: { lineStyle: { color: '#1a1f2e', type: 'dashed' } }
       },
       {
         scale: true,
         gridIndex: 1,
         splitNumber: 2,
-        axisLine: {
-          show: false
-        },
-        axisTick: {
-          show: false
-        },
-        axisLabel: {
-          color: '#6b7280',
-          fontSize: 11
-        },
-        splitLine: {
-          show: false
-        }
+        axisLine: { show: false },
+        axisTick: { show: false },
+        axisLabel: { color: '#6b7280', fontSize: 11 },
+        splitLine: { show: false }
+      },
+      {
+        scale: true,
+        gridIndex: 2,
+        splitNumber: 2,
+        axisLine: { show: false },
+        axisTick: { show: false },
+        axisLabel: { color: '#6b7280', fontSize: 11 },
+        splitLine: { lineStyle: { color: '#1a1f2e', type: 'dashed' } }
       }
     ],
     dataZoom: [
       {
         type: 'inside',
-        xAxisIndex: [0, 1],
+        xAxisIndex: [0, 1, 2],
         start: 0,
         end: 100
       },
       {
         show: true,
-        xAxisIndex: [0, 1],
+        xAxisIndex: [0, 1, 2],
         type: 'slider',
         bottom: '2%',
         start: 0,
@@ -204,19 +214,11 @@ const initChart = () => {
         height: 20,
         borderColor: '#1a1f2e',
         fillerColor: 'rgba(0, 255, 136, 0.1)',
-        handleStyle: {
-          color: '#00ff88'
-        },
-        textStyle: {
-          color: '#6b7280'
-        },
+        handleStyle: { color: '#00ff88' },
+        textStyle: { color: '#6b7280' },
         dataBackground: {
-          lineStyle: {
-            color: '#1a1f2e'
-          },
-          areaStyle: {
-            color: '#1a1f2e'
-          }
+          lineStyle: { color: '#1a1f2e' },
+          areaStyle: { color: '#1a1f2e' }
         }
       }
     ],
@@ -228,8 +230,8 @@ const initChart = () => {
         xAxisIndex: 0,
         yAxisIndex: 0,
         itemStyle: {
-          color: '#00ff88',      // 涨：绿色
-          color0: '#ef4444',     // 跌：红色
+          color: '#00ff88',
+          color0: '#ef4444',
           borderColor: '#00ff88',
           borderColor0: '#ef4444',
           borderWidth: 1
@@ -240,10 +242,7 @@ const initChart = () => {
         type: 'line',
         data: [],
         smooth: false,
-        lineStyle: {
-          width: 1.5,
-          color: '#ff6b6b'
-        },
+        lineStyle: { width: 1.5, color: '#ff6b6b' },
         showSymbol: false,
         xAxisIndex: 0,
         yAxisIndex: 0
@@ -253,10 +252,7 @@ const initChart = () => {
         type: 'line',
         data: [],
         smooth: false,
-        lineStyle: {
-          width: 1.5,
-          color: '#4ecdc4'
-        },
+        lineStyle: { width: 1.5, color: '#4ecdc4' },
         showSymbol: false,
         xAxisIndex: 0,
         yAxisIndex: 0
@@ -266,10 +262,37 @@ const initChart = () => {
         type: 'line',
         data: [],
         smooth: false,
-        lineStyle: {
-          width: 1.5,
-          color: '#ffe66d'
-        },
+        lineStyle: { width: 1.5, color: '#ffe66d' },
+        showSymbol: false,
+        xAxisIndex: 0,
+        yAxisIndex: 0
+      },
+      {
+        name: 'BOLL上轨',
+        type: 'line',
+        data: [],
+        smooth: false,
+        lineStyle: { width: 1, color: '#f472b6', type: 'dashed' },
+        showSymbol: false,
+        xAxisIndex: 0,
+        yAxisIndex: 0
+      },
+      {
+        name: 'BOLL中轨',
+        type: 'line',
+        data: [],
+        smooth: false,
+        lineStyle: { width: 1, color: '#a78bfa' },
+        showSymbol: false,
+        xAxisIndex: 0,
+        yAxisIndex: 0
+      },
+      {
+        name: 'BOLL下轨',
+        type: 'line',
+        data: [],
+        smooth: false,
+        lineStyle: { width: 1, color: '#60a5fa', type: 'dashed' },
         showSymbol: false,
         xAxisIndex: 0,
         yAxisIndex: 0
@@ -283,13 +306,88 @@ const initChart = () => {
         itemStyle: {
           color: function (params: any) {
             const dataIndex = params.dataIndex
-            if (!props.data) return '#00ff88'
-            const klineData = props.data.kline[dataIndex]
-            // 涨绿跌红
-            return klineData[1] >= klineData[0] ? '#00ff88' : '#ef4444'
+            const klineArr = props.data?.kline
+            const item = klineArr?.[dataIndex] as number[] | undefined
+            if (!item) return '#00ff88'
+            return (item[1] as number) >= (item[0] as number) ? '#00ff88' : '#ef4444'
           },
           opacity: 0.6
         }
+      },
+      // MACD 指标
+      {
+        name: 'DIF',
+        type: 'line',
+        data: [],
+        smooth: false,
+        lineStyle: { width: 1.5, color: '#fbbf24' },
+        showSymbol: false,
+        xAxisIndex: 2,
+        yAxisIndex: 2
+      },
+      {
+        name: 'DEA',
+        type: 'line',
+        data: [],
+        smooth: false,
+        lineStyle: { width: 1.5, color: '#34d399' },
+        showSymbol: false,
+        xAxisIndex: 2,
+        yAxisIndex: 2
+      },
+      {
+        name: 'MACD',
+        type: 'bar',
+        data: [],
+        xAxisIndex: 2,
+        yAxisIndex: 2,
+        itemStyle: {
+          color: function (params: any) {
+            return params.data >= 0 ? '#ef4444' : '#00ff88'
+          }
+        }
+      },
+      // KDJ 指标
+      {
+        name: 'K',
+        type: 'line',
+        data: [],
+        smooth: false,
+        lineStyle: { width: 1.5, color: '#fbbf24' },
+        showSymbol: false,
+        xAxisIndex: 2,
+        yAxisIndex: 2
+      },
+      {
+        name: 'D',
+        type: 'line',
+        data: [],
+        smooth: false,
+        lineStyle: { width: 1.5, color: '#34d399' },
+        showSymbol: false,
+        xAxisIndex: 2,
+        yAxisIndex: 2
+      },
+      {
+        name: 'J',
+        type: 'line',
+        data: [],
+        smooth: false,
+        lineStyle: { width: 1.5, color: '#f472b6' },
+        showSymbol: false,
+        xAxisIndex: 2,
+        yAxisIndex: 2
+      },
+      // RSI 指标
+      {
+        name: 'RSI',
+        type: 'line',
+        data: [],
+        smooth: false,
+        lineStyle: { width: 1.5, color: '#a78bfa' },
+        showSymbol: false,
+        xAxisIndex: 2,
+        yAxisIndex: 2
       }
     ]
   }
@@ -301,34 +399,50 @@ const initChart = () => {
 const updateChart = () => {
   if (!chartInstance || !props.data) return
 
+  const indicator = props.indicator || 'macd'
+
+  // 根据选择的指标显示/隐藏对应的系列
+  const macdVisible = indicator === 'macd'
+  const kdjVisible = indicator === 'kdj'
+  const rsiVisible = indicator === 'rsi'
+
+  // 更新图例
+  const legendData = ['K线', 'MA5', 'MA10', 'MA20', 'BOLL上轨', 'BOLL中轨', 'BOLL下轨', '成交量']
+  if (macdVisible) legendData.push('DIF', 'DEA', 'MACD')
+  if (kdjVisible) legendData.push('K', 'D', 'J')
+  if (rsiVisible) legendData.push('RSI')
+
   chartInstance.setOption({
     title: {
       text: `${props.data.symbol} 股票K线图`
     },
+    legend: {
+      data: legendData
+    },
     xAxis: [
-      {
-        data: props.data.dates
-      },
-      {
-        data: props.data.dates
-      }
+      { data: props.data.dates },
+      { data: props.data.dates },
+      { data: props.data.dates }
     ],
     series: [
-      {
-        data: props.data.kline
-      },
-      {
-        data: props.data.ma5
-      },
-      {
-        data: props.data.ma10
-      },
-      {
-        data: props.data.ma20
-      },
-      {
-        data: props.data.volumes
-      }
+      { data: props.data.kline },
+      { data: props.data.ma5 },
+      { data: props.data.ma10 },
+      { data: props.data.ma20 },
+      { data: props.data.boll.upper },
+      { data: props.data.boll.mid },
+      { data: props.data.boll.lower },
+      { data: props.data.volumes },
+      // MACD
+      { data: macdVisible ? props.data.macd.dif : [], lineStyle: { opacity: macdVisible ? 1 : 0 } },
+      { data: macdVisible ? props.data.macd.dea : [], lineStyle: { opacity: macdVisible ? 1 : 0 } },
+      { data: macdVisible ? props.data.macd.macd : [] },
+      // KDJ
+      { data: kdjVisible ? props.data.kdj.k : [], lineStyle: { opacity: kdjVisible ? 1 : 0 } },
+      { data: kdjVisible ? props.data.kdj.d : [], lineStyle: { opacity: kdjVisible ? 1 : 0 } },
+      { data: kdjVisible ? props.data.kdj.j : [], lineStyle: { opacity: kdjVisible ? 1 : 0 } },
+      // RSI
+      { data: rsiVisible ? props.data.rsi : [], lineStyle: { opacity: rsiVisible ? 1 : 0 } }
     ]
   })
 }
@@ -337,6 +451,11 @@ const updateChart = () => {
 watch(() => props.data, () => {
   updateChart()
 }, { deep: true })
+
+// 监听指标切换
+watch(() => props.indicator, () => {
+  updateChart()
+})
 
 // 监听窗口大小变化
 const handleResize = () => {

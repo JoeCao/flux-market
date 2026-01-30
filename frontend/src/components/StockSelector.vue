@@ -63,6 +63,15 @@
         </div>
 
         <div class="form-item">
+          <label>副图指标:</label>
+          <select v-model="selectedIndicator" @change="handleIndicatorChange">
+            <option value="macd">MACD</option>
+            <option value="kdj">KDJ</option>
+            <option value="rsi">RSI</option>
+          </select>
+        </div>
+
+        <div class="form-item">
           <button
             @click="handleQuery"
             :disabled="loading || !formData.symbol"
@@ -88,6 +97,7 @@ import { searchStocks } from '../api/stock'
 // Emits
 const emit = defineEmits<{
   query: [params: StockQueryParams]
+  indicatorChange: [indicator: 'macd' | 'kdj' | 'rsi']
 }>()
 
 // Props
@@ -103,6 +113,13 @@ const formData = reactive<StockQueryParams>({
   end_date: '',
   adjust: 'qfq'
 })
+
+// 指标选择
+const selectedIndicator = ref<'macd' | 'kdj' | 'rsi'>('macd')
+
+const handleIndicatorChange = () => {
+  emit('indicatorChange', selectedIndicator.value)
+}
 
 // 搜索相关
 const searchKeyword = ref('')
@@ -171,7 +188,7 @@ const handleQuery = () => {
   const keyword = searchKeyword.value.trim()
   if (!formData.symbol && keyword) {
     // 提取代码部分（空格前的内容）
-    formData.symbol = keyword.split(' ')[0]
+    formData.symbol = keyword.split(' ')[0] || ''
   }
 
   if (!formData.symbol) return

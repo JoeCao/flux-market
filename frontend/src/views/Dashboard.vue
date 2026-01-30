@@ -12,6 +12,7 @@
         :loading="loading"
         :error="error"
         @query="handleQuery"
+        @indicator-change="handleIndicatorChange"
       />
 
       <div v-if="loading" class="loading-container">
@@ -20,7 +21,7 @@
       </div>
 
       <div v-else-if="klineData" class="chart-container">
-        <KLineChart :data="klineData" height="600px" />
+        <KLineChart :data="klineData" :indicator="currentIndicator" height="700px" />
 
         <div class="data-info">
           <div class="info-item">
@@ -59,6 +60,12 @@ import type { KLineData, StockQueryParams } from '../types/stock'
 const loading = ref(false)
 const error = ref('')
 const klineData = ref<KLineData | null>(null)
+const currentIndicator = ref<'macd' | 'kdj' | 'rsi'>('macd')
+
+// 指标切换
+const handleIndicatorChange = (indicator: 'macd' | 'kdj' | 'rsi') => {
+  currentIndicator.value = indicator
+}
 
 // 查询处理
 const handleQuery = async (params: StockQueryParams) => {
